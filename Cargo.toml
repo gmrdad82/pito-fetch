@@ -1,0 +1,19 @@
+[package]
+name = "fetch"
+version = "0.1.2"
+edition = "2024"
+rust-version = "1.97"
+description = "Atomic, resumable HTTP downloads pinned to a sha256: a file lands whole and verified, or not at all"
+license = "MIT"
+repository = "https://github.com/gmrdad82/pito-fetch"
+homepage = "https://pitomd.com"
+readme = "README.md"
+publish = false
+
+[dependencies]
+sha2 = "0.10"
+thiserror = "2"
+ureq = { version = "~3.4", default-features = false, features = ["rustls"] }
+
+[dev-dependencies]
+tempfile = "3"

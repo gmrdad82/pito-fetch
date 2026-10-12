@@ -1,0 +1,47 @@
+app = "pito-fetch"
+bin = "get"
+grid = [120, 13]
+frame = "window"
+prompt = "$ "
+typing = "30ms"
+setup = "sh {app}/render/terminal/setup.sh {bin} {scratch}/demo"
+teardown = "sh {app}/render/terminal/teardown.sh {scratch}/demo"
+
+[build]
+command = "cargo build --release --locked --examples"
+bin_dir = "{target}/release/examples"
+
+[env]
+HOME = "home"
+TMPDIR = "temp"
+NO_COLOR = "1"
+
+[theme]
+name = "Catppuccin Mocha"
+background = "#1e1e2e"
+foreground = "#cdd6f4"
+selection = "#45475a"
+cursor = "#f5e0dc"
+black = "#45475a"
+red = "#f38ba8"
+green = "#a6e3a1"
+yellow = "#f9e2af"
+blue = "#89b4fa"
+magenta = "#f5c2e7"
+cyan = "#94e2d5"
+white = "#bac2de"
+brightBlack = "#585b70"
+brightRed = "#f38ba8"
+brightGreen = "#a6e3a1"
+brightYellow = "#f9e2af"
+brightBlue = "#89b4fa"
+brightMagenta = "#f5c2e7"
+brightCyan = "#94e2d5"
+brightWhite = "#a6adc8"
+
+[shots.resume]
+kind = "clip"
+line = "The get example downloads a file, is stopped with Ctrl-C, resumes where it stopped, and refuses a wrong sha256"
+tape = "render/terminal/resume.tape"
+launch = "cd {scratch}/demo && export PATH={bin}:$PATH && sum=$(cat model.bin.sha256) && bad=$(printf '0%.0s' $(seq 64)) && clear"
+settle = "400ms"

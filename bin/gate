@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+if command -v shellcheck > /dev/null; then
+  shellcheck bin/gate render/terminal/setup.sh render/terminal/teardown.sh
+else
+  echo "gate: shellcheck is not installed here, so the scripts are not linted"
+fi
+cargo fmt --all --check
+cargo clippy --workspace --all-targets --locked -- -D warnings
+cargo test --workspace --all-targets --locked
+cargo test --workspace --doc --locked

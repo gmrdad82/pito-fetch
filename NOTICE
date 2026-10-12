@@ -1,0 +1,16 @@
+pito-fetch
+Copyright (c) 2026 Cătălin Ilinca
+
+The code is under the MIT licence in LICENSE.
+
+These are the files in this repository that are not code, where each comes
+from, and what covers it.
+
+Terminal clip recorded by prec from this repository's own shot
+(render/terminal.toml and the tape and scripts in render/terminal/), running
+the get and serve examples on generated data, made a GIF by pconv, under the
+MIT licence like the code:
+- docs/images/resume.gif: the resume shot
+
+The pito-fetch and PITO names and their logos are © Catalin Ilinca, all rights
+reserved and not covered by the MIT licence (TRADEMARKS.md).

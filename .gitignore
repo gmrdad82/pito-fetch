@@ -1,0 +1,9 @@
+tmp/
+target/
+/.dev
+/AGENTS.md
+/CLAUDE.md
+/HANDOVER.md
+/prompts
+/pito-app.toml
+/dev
