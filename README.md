@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/gmrdad82/pito-fetch/actions/workflows/ci.yml/badge.svg)](https://github.com/gmrdad82/pito-fetch/actions/workflows/ci.yml) [![Version](https://img.shields.io/github/v/tag/gmrdad82/pito-fetch)](https://github.com/gmrdad82/pito-fetch/tags)
 
-pito-fetch is a small Rust library for downloads you can trust, part of [PITO](https://pitomd.com). You give it a URL, where the file goes and the file's sha256; it downloads into a `.part` file beside the destination, resumes that file after an interruption, checks the sha256 and only then renames it into place. A file is there whole and verified, or not at all.
+pito-fetch is a small Rust library for downloads you can trust, part of [PITO MD](https://pitomd.com). You give it a URL, where the file goes and the file's sha256; it downloads into a `.part` file beside the destination, resumes that file after an interruption, checks the sha256 and only then renames it into place. A file is there whole and verified, or not at all.
 
 Works on Linux and macOS (Windows through WSL).
 
@@ -94,4 +94,4 @@ bin/gate
 
 ## Licence
 
-The code is MIT licensed ([LICENSE](LICENSE)), © Catalin Ilinca. The pito-fetch and PITO names and their logos are © Catalin Ilinca, all rights reserved, and are not covered by the MIT licence ([TRADEMARKS.md](TRADEMARKS.md)).
+The code is MIT licensed ([LICENSE](LICENSE)), © Catalin Ilinca. The pito-fetch and PITO MD names and their logos are © Catalin Ilinca, all rights reserved, and are not covered by the MIT licence ([TRADEMARKS.md](TRADEMARKS.md)).
