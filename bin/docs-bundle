@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+version=$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -1)
+tag=${1:-v$version}
+[ "$tag" = "v$version" ] || { echo "docs-bundle: $tag is not v$version" >&2; exit 1; }
+
+work=tmp/docs-bundle
+out=tmp/docs-$tag.tar.gz
+rm -rf "$work" "$out"
+mkdir -p "$work/docs"
+cp -R docs/pages/. "$work/docs/"
+
+find "$work/docs" -name '*.md' -print0 | xargs -0 sed -i.bak "s/{{version}}/$tag/g"
+find "$work/docs" -name '*.bak' -delete
+
+{
+  printf -- '---\ntitle: Changelog\ndescription: What changed in each pito-fetch release.\nsidebar:\n  order: 90\n---\n\n'
+  sed '1{/^# /d;}' CHANGELOG.md | sed '/./,$!d'
+} > "$work/docs/changelog.md"
+grep -q "^## $tag " "$work/docs/changelog.md" || { echo "docs-bundle: CHANGELOG.md has no section for $tag" >&2; exit 1; }
+
+mkdir -p "$work/docs/images"
+grep -rhoE --include='*.md' 'images/[A-Za-z0-9._-]+\.(png|gif|webp)' "$work/docs" | sort -u | while read -r image; do
+  name=${image#images/}
+  [ -f "docs/images/$name" ] || { echo "docs-bundle: docs/images/$name is missing" >&2; exit 1; }
+  grep -q "docs/images/$name" NOTICE || { echo "docs-bundle: docs/images/$name is not named in NOTICE" >&2; exit 1; }
+  cp "docs/images/$name" "$work/docs/images/$name"
+done
+
+cargo doc --no-deps --locked --lib --target-dir "$work/target" --quiet
+cp -R "$work/target/doc" "$work/docs/api"
+rm -f "$work/docs/api/.lock"
+printf '<!doctype html>\n<meta charset="utf-8">\n<meta http-equiv="refresh" content="0; url=fetch/index.html">\n<title>fetch</title>\n<a href="fetch/index.html">fetch</a>\n' > "$work/docs/api/index.html"
+
+if tar --version 2> /dev/null | grep -q GNU; then
+  owner=(--owner=0 --group=0 --numeric-owner --sort=name)
+else
+  owner=(--uid 0 --gid 0 --numeric-owner)
+fi
+tar "${owner[@]}" -czf "$out" -C "$work" docs
+echo "$out"

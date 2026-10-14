@@ -38,6 +38,11 @@ jobs:
           ' CHANGELOG.md > notes.md
           grep -q '[^[:space:]]' notes.md || { echo "CHANGELOG.md has no section for $TAG" >&2; exit 1; }
           cat notes.md
+      - uses: dtolnay/rust-toolchain@89b12181fb390509a0842a86cc55eeb8eb928c1d
+        with:
+          toolchain: 1.97.1
+      - name: docs bundle
+        run: bin/docs-bundle "$TAG"
       - name: release
         run: |
           if gh release view "$TAG" > /dev/null 2>&1; then
@@ -45,3 +50,4 @@ jobs:
           else
             gh release create "$TAG" --title "$TAG" --notes-file notes.md --verify-tag
           fi
+          gh release upload "$TAG" "tmp/docs-$TAG.tar.gz" --clobber

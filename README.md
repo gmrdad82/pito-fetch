@@ -131,7 +131,7 @@ cargo build --release
 bin/gate
 ```
 
-`bin/gate` runs what CI runs: ShellCheck where it is installed, rustfmt, clippy with warnings as errors, and the tests. CI runs the gate on Linux and macOS on every push and nightly, and a tag publishes its GitHub Release with the [CHANGELOG](CHANGELOG.md)'s notes. The clips are prec shots in `render/terminal.toml`, and [NOTICE](NOTICE) lists every image and where it comes from.
+`bin/gate` runs what CI runs: ShellCheck where it is installed, rustfmt, clippy with warnings as errors, and the tests. CI runs the gate on Linux and macOS on every push and nightly, and a tag publishes its GitHub Release with the [CHANGELOG](CHANGELOG.md)'s notes and a docs bundle, `docs-vX.Y.Z.tar.gz`, that `bin/docs-bundle` builds from the guides in [`docs/pages/`](docs/pages), the API reference from `cargo doc` and the CHANGELOG. The clips are prec shots in `render/terminal.toml`, and [NOTICE](NOTICE) lists every image and where it comes from.
 
 ## Licence
 
