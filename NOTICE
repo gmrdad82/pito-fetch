@@ -19,5 +19,10 @@ the code:
 - docs/images/download-verify-paired.png: docs/charts/download-verify.toml
 - docs/images/peak-memory-paired.png: docs/charts/peak-memory.toml
 
+The PITO MD wordmark in assets/marks/pitomd-wordmark.svg is copied by
+bin/marks from the PITO MD brand masters at
+fe97f221c8c071389283144c416f4fcde87b3958; its gradient reads on light and
+dark backgrounds alike.
+
 The pito-fetch and PITO MD names and their logos are © Catalin Ilinca, all
 rights reserved and not covered by the MIT licence (TRADEMARKS.md).
