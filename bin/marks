@@ -2,6 +2,6 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 assets="${PITO_ASSETS:?PITO_ASSETS names the checkout of the PITO MD brand masters}"
-rev=fe97f221c8c071389283144c416f4fcde87b3958
+rev=aa3aee8b232a1b848995bf3d9a012a01d4aff8ec
 mkdir -p assets/marks
-git -C "$assets" show "$rev:wordmarks/pito.svg" > assets/marks/pitomd-wordmark.svg
+git -C "$assets" show "$rev:exports/pitomd/readme/wordmark.svg" > assets/marks/pitomd-wordmark.svg
