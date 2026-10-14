@@ -45,3 +45,10 @@ line = "The get example downloads a file, is stopped with Ctrl-C, resumes where 
 tape = "render/terminal/resume.tape"
 launch = "cd {scratch}/demo && export PATH={bin}:$PATH && sum=$(cat model.bin.sha256) && bad=$(printf '0%.0s' $(seq 64)) && clear"
 settle = "400ms"
+
+[shots.together]
+kind = "clip"
+line = "Two get commands start the same download at once; both return the one verified file"
+tape = "render/terminal/together.tape"
+launch = "cd {scratch}/demo && export PATH={bin}:$PATH && sum=$(cat model.bin.sha256) && url=http://127.0.0.1:8471/model.bin && clear"
+settle = "400ms"

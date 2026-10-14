@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+runs=${1:-5}
+port=8472
+root=$(cd "$(dirname "$0")/.." && pwd)
+work=$root/tmp/bench
+bin=$root/target/release/examples
+
+cargo build --release --locked --examples --manifest-path "$root/Cargo.toml"
+mkdir -p "$work/files" "$work/out"
+cd "$work"
+
+sum_of() {
+  if command -v sha256sum > /dev/null; then sha256sum "$1"; else shasum -a 256 "$1"; fi | cut -d' ' -f1
+}
+
+for mib in 1024 100; do
+  [ -f "files/f$mib.bin" ] || head -c $((mib * 1024 * 1024)) /dev/urandom > "files/f$mib.bin"
+  sum_of "files/f$mib.bin" > "files/f$mib.sum"
+done
+
+"$bin/serve" files "$port" > /dev/null 2>&1 &
+server=$!
+trap 'kill "$server"; rm -f out/*' EXIT
+sleep 0.3
+
+now_ms() {
+  perl -MTime::HiRes=time -e 'printf "%d\n", time * 1000'
+}
+
+run() {
+  local client=$1 mib=$2 sum url start
+  sum=$(cat "files/f$mib.sum")
+  url=http://127.0.0.1:$port/f$mib.bin
+  rm -f out/*
+  start=$(now_ms)
+  case $client in
+    pito-fetch) "$bin/get" "$url" "$sum" out/f.bin > /dev/null 2>&1 ;;
+    curl) curl -sS -o out/f.bin "$url" && [ "$(sum_of out/f.bin)" = "$sum" ] ;;
+    wget) wget -q -O out/f.bin "$url" && [ "$(sum_of out/f.bin)" = "$sum" ] ;;
+  esac
+  echo "$client $mib $(($(now_ms) - start))"
+}
+
+clients=(pito-fetch curl wget)
+for _ in $(seq "$runs"); do
+  for mib in 1024 100; do
+    for client in "${clients[@]}"; do
+      command -v "$client" > /dev/null || [ "$client" = pito-fetch ] || continue
+      run "$client" "$mib"
+    done
+  done
+done | sort -k1,1 -k2,2n -k3,3n | awk '
+  { key = $1 " " $2 " MiB"; v[key, ++n[key]] = $3 }
+  END { for (k in n) printf "%-22s median %d ms of %d runs\n", k, v[k, int((n[k] + 1) / 2)], n[k] }
+' | sort

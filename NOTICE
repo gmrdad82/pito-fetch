@@ -6,11 +6,18 @@ The code is under the MIT licence in LICENSE.
 These are the files in this repository that are not code, where each comes
 from, and what covers it.
 
-Terminal clip recorded by prec from this repository's own shot
-(render/terminal.toml and the tape and scripts in render/terminal/), running
-the get and serve examples on generated data, made a GIF by pconv, under the
+Terminal clips recorded by prec from this repository's own shots
+(render/terminal.toml and the tapes and scripts in render/terminal/), running
+the get and serve examples on generated data, made GIFs by pconv, under the
 MIT licence like the code:
 - docs/images/resume.gif: the resume shot
+- docs/images/together.gif: the together shot
+
+Charts drawn by pito-compare from this repository's own measurements (the
+data files in docs/charts/, timed with bin/bench), under the MIT licence like
+the code:
+- docs/images/download-verify-paired.png: docs/charts/download-verify.toml
+- docs/images/peak-memory-paired.png: docs/charts/peak-memory.toml
 
 The pito-fetch and PITO MD names and their logos are © Catalin Ilinca, all
 rights reserved and not covered by the MIT licence (TRADEMARKS.md).

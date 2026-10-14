@@ -1,0 +1,15 @@
+title = "DOWNLOAD AND VERIFY"
+unit = "MILLISECONDS, MEDIAN OF 5"
+better = "lower"
+subtitle = "LOOPBACK, RYZEN 9 9950X, NVME, LINUX"
+date = "2026-10-14"
+suffix = " MS"
+notes = ["CURL AND WGET ARE FOLLOWED BY SHA256SUM; PITO-FETCH CHECKS ITS OWN SHA256.", "MEASURED ON A BUSY MACHINE: LOAD AVERAGE ABOUT 80 ON 32 THREADS."]
+parties = [{ name = "PITO-FETCH 1.0.0" }, { name = "CURL 8.22 + SHA256SUM" }, { name = "WGET 1.25 + SHA256SUM" }]
+
+[[groups]]
+name = "RANDOM FILE"
+rows = [
+  { label = "1 GIB", values = [2472, 2114, 2157] },
+  { label = "100 MIB", values = [342, 236, 241] },
+]
