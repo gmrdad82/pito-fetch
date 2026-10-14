@@ -1,5 +1,20 @@
 # Changelog
 
+## v1.0.0 — 2026-10-14
+
+### Added
+
+- `bin/bench` times a download and sha256 check against curl and wget followed by `sha256sum`, to reproduce the README's numbers.
+
+### Changed
+
+- The README shows each feature with a clip or a chart: two downloads of one file, download-and-verify time and peak memory against curl and wget, size and build numbers, and a first use that takes 30 seconds.
+- The brand now reads PITO MD in the README, NOTICE and TRADEMARKS.md.
+
+### Fixed
+
+- Two downloads of the same file started at once now both return the verified file. Before, their bytes mixed in the part file and both failed the sha256 check; nothing unverified ever reached the destination.
+
 ## v0.1.2 — 2026-10-12
 
 ### Added

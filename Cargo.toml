@@ -1,6 +1,6 @@
 [package]
 name = "fetch"
-version = "0.1.2"
+version = "1.0.0"
 edition = "2024"
 rust-version = "1.97"
 description = "Atomic, resumable HTTP downloads pinned to a sha256: a file lands whole and verified, or not at all"
