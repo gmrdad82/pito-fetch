@@ -146,3 +146,69 @@ fn overlapping_fetch_of_same_spec_never_leaves_unverified_bytes_at_final_path() 
         first_divergence.unwrap()
     );
 }
+
+#[test]
+fn two_fetches_started_together_both_return_the_verified_file() {
+    let body = payload(600_000);
+    let len = body.len();
+    let sha = sha256_hex(&body);
+    let body_for_server = body.clone();
+    let base = spawn_threaded(move |_n, mut stream| {
+        let req = parse_request(&stream);
+        let start = req.range_start.unwrap_or(0) as usize;
+        let remaining = &body_for_server[start..];
+        let mut head = vec![
+            format!("Content-Length: {}", remaining.len()),
+            "Connection: close".to_string(),
+        ];
+        let status = if req.range_start.is_some() {
+            head.push(format!(
+                "Content-Range: bytes {}-{}/{}",
+                start,
+                len - 1,
+                len
+            ));
+            "HTTP/1.1 206 Partial Content"
+        } else {
+            "HTTP/1.1 200 OK"
+        };
+        write_head(&mut stream, status, &head);
+        for chunk in remaining.chunks(20_000) {
+            if stream.write_all(chunk).is_err() {
+                return;
+            }
+            let _ = stream.flush();
+            thread::sleep(Duration::from_millis(10));
+        }
+    });
+
+    let dir = support::scratch_dir("together");
+    let dest_root = dir.path().to_path_buf();
+    let spec = FetchSpec {
+        url: Box::leak(format!("{base}/artifact").into_boxed_str()),
+        dest_rel: "artifact.bin",
+        sha256: Box::leak(sha.into_boxed_str()),
+        size_hint: Some(len as u64),
+    };
+
+    let fetches: Vec<_> = (0..2)
+        .map(|_| {
+            let root = dest_root.clone();
+            thread::spawn(move || {
+                Fetcher::with_timings(root, timings(Duration::from_secs(5))).fetch(
+                    &spec,
+                    &CancelToken::new(),
+                    |_| {},
+                )
+            })
+        })
+        .collect();
+    for fetch in fetches {
+        let path = fetch
+            .join()
+            .unwrap()
+            .expect("each fetch must return the file");
+        assert_eq!(std::fs::read(path).unwrap(), body);
+    }
+    assert!(!dest_root.join("artifact.bin.part").exists());
+}

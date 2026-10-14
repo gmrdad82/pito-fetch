@@ -60,6 +60,12 @@ enum AttemptError {
     Stalled,
     Http(u16),
     Io(io::Error),
+    Superseded,
+}
+
+enum Download {
+    Done,
+    Superseded,
 }
 
 enum LockError {
@@ -79,6 +85,7 @@ impl From<LockError> for AttemptError {
 struct PartWriter<'a> {
     file: File,
     path: &'a Path,
+    len: u64,
 }
 
 impl<'a> PartWriter<'a> {
@@ -93,17 +100,25 @@ impl<'a> PartWriter<'a> {
             OpenOptions::new().create(true).append(true).open(path)
         }
         .map_err(AttemptError::Io)?;
-        let writer = PartWriter { file, path };
+        let writer = PartWriter {
+            file,
+            path,
+            len: resume_offset,
+        };
         if resume_offset == 0 {
-            with_part_lock(&writer.file, writer.path, cancel, |file| file.set_len(0))?;
+            with_part_lock(&writer.file, writer.path, None, cancel, |file| {
+                file.set_len(0)
+            })?;
         }
         Ok(writer)
     }
 
     fn write(&mut self, buf: &[u8], cancel: &CancelToken) -> Result<(), AttemptError> {
-        with_part_lock(&self.file, self.path, cancel, |mut file| {
+        with_part_lock(&self.file, self.path, Some(self.len), cancel, |mut file| {
             file.write_all(buf)
-        })
+        })?;
+        self.len += buf.len() as u64;
+        Ok(())
     }
 
     fn finish(self) -> Result<(), AttemptError> {
@@ -203,8 +218,52 @@ impl Fetcher {
             })?;
         }
 
-        self.download_with_retries(request, &part_path, cancel, progress)?;
-        self.verify_and_rename(request, &part_path, &final_path, cancel)
+        loop {
+            match self.download_with_retries(request, &part_path, cancel, progress)? {
+                Download::Done => {
+                    return self.verify_and_rename(request, &part_path, &final_path, cancel);
+                }
+                Download::Superseded => {
+                    if let Some(path) = self.follow(request, &part_path, &final_path, cancel)? {
+                        return Ok(path);
+                    }
+                }
+            }
+        }
+    }
+
+    fn follow(
+        &self,
+        request: RequestRef<'_>,
+        part_path: &Path,
+        final_path: &Path,
+        cancel: &CancelToken,
+    ) -> Result<Option<PathBuf>, FetchError> {
+        let mut last_len = None;
+        let mut quiet_since = Instant::now();
+        loop {
+            sleep_interruptible(self.timings.poll_interval, cancel)?;
+            match fs::metadata(part_path) {
+                Ok(meta) if last_len == Some(meta.len()) => {
+                    if quiet_since.elapsed() >= self.timings.stall_timeout {
+                        return Ok(None);
+                    }
+                }
+                Ok(meta) => {
+                    last_len = Some(meta.len());
+                    quiet_since = Instant::now();
+                }
+                Err(source) if source.kind() == io::ErrorKind::NotFound => {
+                    return Ok(verify_completed(request, final_path).ok());
+                }
+                Err(source) => {
+                    return Err(FetchError::Io {
+                        path: part_path.to_path_buf(),
+                        source,
+                    });
+                }
+            }
+        }
     }
 
     fn contained_dest(&self, dest_rel: &str) -> Result<PathBuf, FetchError> {
@@ -237,13 +296,14 @@ impl Fetcher {
         part_path: &Path,
         cancel: &CancelToken,
         progress: &mut dyn FnMut(FetchProgress),
-    ) -> Result<(), FetchError> {
+    ) -> Result<Download, FetchError> {
         for attempt in 0..=self.timings.backoff.len() {
             if attempt > 0 {
                 sleep_interruptible(self.timings.backoff[attempt - 1], cancel)?;
             }
             match self.attempt(request, part_path, cancel, progress) {
-                Ok(()) => return Ok(()),
+                Ok(()) => return Ok(Download::Done),
+                Err(AttemptError::Superseded) => return Ok(Download::Superseded),
                 Err(AttemptError::Cancelled) => return Err(FetchError::Cancelled),
                 Err(AttemptError::Offline) => {
                     return Err(FetchError::Offline {
@@ -426,16 +486,17 @@ fn acquire_part_lock(file: &File, cancel: &CancelToken) -> Result<(), LockError>
 fn with_part_lock<T>(
     file: &File,
     part_path: &Path,
+    expected_len: Option<u64>,
     cancel: &CancelToken,
     op: impl FnOnce(&File) -> io::Result<T>,
 ) -> Result<T, AttemptError> {
     acquire_part_lock(file, cancel).map_err(AttemptError::from)?;
-    let outcome = if part_still_ours(part_path, file) {
+    let ours = part_len_if_ours(part_path, file)
+        .is_some_and(|len| expected_len.is_none_or(|expected| expected == len));
+    let outcome = if ours {
         op(file).map_err(AttemptError::Io)
     } else {
-        Err(AttemptError::Io(io::Error::other(
-            "part file was replaced or removed during download",
-        )))
+        Err(AttemptError::Superseded)
     };
     let _ = file.unlock();
     outcome
@@ -518,9 +579,13 @@ fn identity_of(_meta: &fs::Metadata) -> (u64, u64) {
 }
 
 fn part_still_ours(part_path: &Path, file: &File) -> bool {
+    part_len_if_ours(part_path, file).is_some()
+}
+
+fn part_len_if_ours(part_path: &Path, file: &File) -> Option<u64> {
     match (fs::metadata(part_path), file.metadata()) {
-        (Ok(on_disk), Ok(ours)) => identity_of(&on_disk) == identity_of(&ours),
-        _ => false,
+        (Ok(on_disk), Ok(ours)) if identity_of(&on_disk) == identity_of(&ours) => Some(ours.len()),
+        _ => None,
     }
 }
 
