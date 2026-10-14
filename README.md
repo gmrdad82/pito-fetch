@@ -22,7 +22,7 @@ pito-fetch isn't on crates.io. Add it from this repository, pinned to a [tag](ht
 
 ```toml
 [dependencies]
-fetch = { git = "https://github.com/gmrdad82/pito-fetch", tag = "v1.0.0" }
+fetch = { git = "https://github.com/gmrdad82/pito-fetch", tag = "v1.0.1" }
 ```
 
 ```rust

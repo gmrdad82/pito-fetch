@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.0.1 — 2026-10-14
+
+### Added
+
+- Each release gains a docs bundle with a guide for each task, the API reference and the changelog.
+
 ## v1.0.0 — 2026-10-14
 
 ### Added
