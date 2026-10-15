@@ -47,7 +47,8 @@ jobs:
         with:
           toolchain: 1.97.1
           components: rustfmt, clippy
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+      - id: cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: |
             ~/.cargo/registry/index
@@ -57,3 +58,12 @@ jobs:
           key: ${{ matrix.os }}-${{ matrix.task }}-rust-1.97.1-${{ hashFiles('Cargo.lock') }}
           restore-keys: ${{ matrix.os }}-${{ matrix.task }}-rust-1.97.1-
       - run: ${{ matrix.run }}
+      - if: github.ref == 'refs/heads/main' && steps.cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            target
+          key: ${{ steps.cache.outputs.cache-primary-key }}
