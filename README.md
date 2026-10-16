@@ -8,8 +8,8 @@
 
 | | |
 |---|---|
-| 1 GiB downloaded and verified | **2.47 s** on loopback, in **7.8 MiB** of memory |
-| Library code | **699 lines** of Rust |
+| 1 GiB downloaded and verified | **0.59 s** on loopback, in **7.9 MiB** of memory |
+| Library code | **725 lines** of Rust |
 | Dependencies | **3** direct (ureq, sha2, thiserror), no OpenSSL or other system library |
 | Clean release build | **11.7 s** |
 | A downloader built on it | **2.5 MB** stripped, TLS and root certificates included |
@@ -68,15 +68,15 @@ Two fetchers can ask for the same file at the same moment, from two threads or t
 
 ### Speed
 
-<p align="center"><img src="docs/images/download-verify-paired.png" width="640" alt="Chart, download and verify in milliseconds, lower is better: 1 GiB takes pito-fetch 2472 ms, curl plus sha256sum 2114 ms, wget plus sha256sum 2157 ms; 100 MiB takes 342, 236 and 241 ms."></p>
+<p align="center"><img src="docs/images/download-verify-paired.png" width="640" alt="Chart, download and verify in milliseconds, lower is better: 1 GiB takes pito-fetch 592 ms, curl plus sha256sum 814 ms, wget plus sha256sum 743 ms; 100 MiB takes 71, 87 and 80 ms."></p>
 
-Downloading a file and checking its sha256 takes pito-fetch 1.2 times as long as curl or wget followed by `sha256sum` on a 1 GiB file, and 1.4 times on 100 MiB, over loopback where the network costs nothing and the client is all that's measured. Progress comes about every 100 ms with the bytes received, the total when the server sends it, and the speed.
+Downloading a file and checking its sha256 takes pito-fetch less time than curl or wget followed by `sha256sum`: 592 ms against 814 and 743 ms on a 1 GiB file, 71 against 87 and 80 ms on 100 MiB. Each chunk is hashed as it is written, so the file is never read back. That is over loopback where the network costs nothing and the client is all that's measured. Progress comes about every 100 ms with the bytes received, the total when the server sends it, and the speed.
 
 ### Light
 
-<p align="center"><img src="docs/images/peak-memory-paired.png" width="640" alt="Chart, peak memory in MiB for a 1 GiB download and verify, lower is better: pito-fetch 7.8, curl plus sha256sum 9.9, wget plus sha256sum 8.3."></p>
+<p align="center"><img src="docs/images/peak-memory-paired.png" width="640" alt="Chart, peak memory in MiB for a 1 GiB download and verify, lower is better: pito-fetch 7.9, curl plus sha256sum 9.9, wget plus sha256sum 8.3."></p>
 
-Memory stays flat whatever the file's size: bytes stream through a 64 KiB buffer to disk, and the hash reads the file back in the same 64 KiB steps. The whole library is 699 lines of Rust on three crates: [ureq](https://github.com/algesten/ureq) for HTTP and HTTPS with rustls and the Mozilla root certificates built in, sha2 and thiserror. It is blocking, one thread per download, with no async runtime.
+Memory stays flat whatever the file's size: bytes stream through a 1 MiB buffer to disk and into the sha256 in the same pass. The whole library is 725 lines of Rust on three crates: [ureq](https://github.com/algesten/ureq) for HTTP and HTTPS with rustls and the Mozilla root certificates built in, sha2 and thiserror. It is blocking, one thread per download, with no async runtime.
 
 ### Safe against bad servers and bad paths
 
@@ -105,10 +105,10 @@ The tests run real downloads against local servers that die mid-file, lie about 
 
 ## Numbers
 
-Measured once on 2026-10-14, on Linux with an AMD Ryzen 9 9950X (16 cores, 32 threads) and an NVMe disk, with Rust 1.97.1. The machine was busy with other work at the time (load average about 80), so every client ran slower than it would alone; all three ran under the same load, interleaved run by run.
+Measured once on 2026-10-16, on Linux with an AMD Ryzen 9 9950X (16 cores, 32 threads) and an NVMe disk, with Rust 1.97.1. The machine was otherwise idle (load average about 2), and the clients ran interleaved run by run.
 
-- **Download and verify:** [`bin/bench`](bin/bench) serves a file of random bytes with the `serve` example on 127.0.0.1 and times, five times each and interleaved, the `get` example (download and sha256 check in one process) against `curl -o` (curl 8.22) and `wget -O` (wget 1.25), each followed by `sha256sum`. The chart shows the medians: 1 GiB in 2472, 2114 and 2157 ms; 100 MiB in 342, 236 and 241 ms.
-- **Peak memory:** the peak resident set (`ru_maxrss`) of each process for the 1 GiB file: `get` 7.8 MiB; curl 9.9 MiB, wget 8.3 MiB and `sha256sum` 8.3 MiB, so the larger of each pair is charted.
+- **Download and verify:** [`bin/bench`](bin/bench) serves a file of random bytes with the `serve` example on 127.0.0.1 and times, seven times each and interleaved (`bin/bench 7`), the `get` example (download and sha256 check in one process) against `curl -o` (curl 8.22) and `wget -O` (wget 1.25), each followed by `sha256sum`. The chart shows the medians: 1 GiB in 592, 814 and 743 ms; 100 MiB in 71, 87 and 80 ms. In the same session pito-fetch 1.0.1, which read the file back after the download to hash it and locked the part file for every 64 KiB, took 802 and 83 ms.
+- **Peak memory:** the peak resident set (`ru_maxrss`) of each process for the 1 GiB file: `get` 7.9 MiB; curl 9.9 MiB, wget 8.3 MiB and `sha256sum` 8.3 MiB, so the larger of each pair is charted.
 - **Lines:** the library's `src/`, without its unit tests, blank lines or comments.
 - **Dependencies:** `cargo tree`: three direct, 35 crates in all, build-time macros included. ring, under rustls, compiles a little C and assembly, so a build needs a C compiler; nothing links to a system library at run time.
 - **Build:** `cargo build --release --locked` from a clean target folder.

@@ -41,7 +41,7 @@ Within one call, a connection that breaks mid-file is retried three times, after
 
 ## Verify
 
-When the body ends, the whole part file is read back and hashed. Only a match is renamed into place, and the rename is atomic: anyone opening the destination sees no file or the whole verified file, never a half.
+Each chunk is hashed as it is written, and a resumed part's existing bytes are hashed once before the Range request, so the file is never read back. When the body ends, the hash is checked under the part file's lock: a mismatch deletes the part, and only a match is synced and renamed into place, and the rename is atomic: anyone opening the destination sees no file or the whole verified file, never a half.
 
 A mismatch deletes the part file and fails:
 

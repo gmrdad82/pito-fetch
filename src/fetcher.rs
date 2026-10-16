@@ -1,5 +1,5 @@
 use std::fs::{self, File, OpenOptions, TryLockError};
-use std::io::{self, Read, Write};
+use std::io::{self, Read, Seek, SeekFrom, Write};
 use std::path::{Component, Path, PathBuf};
 use std::thread;
 use std::time::{Duration, Instant};
@@ -23,7 +23,8 @@ const BACKOFF: [Duration; 3] = [
     Duration::from_secs(4),
     Duration::from_secs(9),
 ];
-const CHUNK_SIZE: usize = 64 * 1024;
+const CHUNK_SIZE: usize = 1024 * 1024;
+const INPUT_BUFFER_SIZE: usize = 256 * 1024;
 const PROGRESS_INTERVAL: Duration = Duration::from_millis(100);
 const SLEEP_STEP: Duration = Duration::from_millis(50);
 const ABSOLUTE_BYTE_CAP: u64 = 8 * 1024 * 1024 * 1024;
@@ -63,8 +64,8 @@ enum AttemptError {
     Superseded,
 }
 
-enum Download {
-    Done,
+enum Download<'a> {
+    Done(PartWriter<'a>),
     Superseded,
 }
 
@@ -86,43 +87,62 @@ struct PartWriter<'a> {
     file: File,
     path: &'a Path,
     len: u64,
+    hasher: Sha256,
 }
 
 impl<'a> PartWriter<'a> {
-    fn open(
-        path: &'a Path,
-        resume_offset: u64,
-        cancel: &CancelToken,
-    ) -> Result<Self, AttemptError> {
-        let file = if resume_offset > 0 {
-            OpenOptions::new().append(true).open(path)
-        } else {
-            OpenOptions::new().create(true).append(true).open(path)
+    fn resume(path: &'a Path, cancel: &CancelToken) -> Result<Option<Self>, AttemptError> {
+        let file = match OpenOptions::new().read(true).append(true).open(path) {
+            Ok(file) => file,
+            Err(source) if source.kind() == io::ErrorKind::NotFound => return Ok(None),
+            Err(source) => return Err(AttemptError::Io(source)),
+        };
+        let hashed = with_part_lock(&file, path, None, cancel, |mut file| {
+            let len = file.metadata()?.len();
+            file.seek(SeekFrom::Start(0))?;
+            let mut hasher = Sha256::new();
+            if hash_into(file.take(len), &mut hasher)? != len {
+                return Err(io::ErrorKind::UnexpectedEof.into());
+            }
+            Ok((len, hasher))
+        });
+        match hashed {
+            Ok((0, _)) | Err(AttemptError::Superseded) => Ok(None),
+            Ok((len, hasher)) => Ok(Some(PartWriter {
+                file,
+                path,
+                len,
+                hasher,
+            })),
+            Err(err) => Err(err),
         }
-        .map_err(AttemptError::Io)?;
-        let writer = PartWriter {
+    }
+
+    fn create(path: &'a Path, cancel: &CancelToken) -> Result<Self, AttemptError> {
+        let file = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(path)
+            .map_err(AttemptError::Io)?;
+        with_part_lock(&file, path, None, cancel, |file| file.set_len(0))?;
+        Ok(PartWriter {
             file,
             path,
-            len: resume_offset,
-        };
-        if resume_offset == 0 {
-            with_part_lock(&writer.file, writer.path, None, cancel, |file| {
-                file.set_len(0)
-            })?;
-        }
-        Ok(writer)
+            len: 0,
+            hasher: Sha256::new(),
+        })
     }
 
     fn write(&mut self, buf: &[u8], cancel: &CancelToken) -> Result<(), AttemptError> {
+        if buf.is_empty() {
+            return Ok(());
+        }
         with_part_lock(&self.file, self.path, Some(self.len), cancel, |mut file| {
             file.write_all(buf)
         })?;
+        self.hasher.update(buf);
         self.len += buf.len() as u64;
         Ok(())
-    }
-
-    fn finish(self) -> Result<(), AttemptError> {
-        self.file.sync_all().map_err(AttemptError::Io)
     }
 }
 
@@ -152,6 +172,7 @@ impl Fetcher {
             .timeout_recv_body(Some(BODY_BUDGET))
             .http_status_as_error(false)
             .max_redirects(10)
+            .input_buffer_size(INPUT_BUFFER_SIZE)
             .build();
         Fetcher {
             dest_root: dest_root.into(),
@@ -220,14 +241,17 @@ impl Fetcher {
 
         loop {
             match self.download_with_retries(request, &part_path, cancel, progress)? {
-                Download::Done => {
-                    return self.verify_and_rename(request, &part_path, &final_path, cancel);
-                }
-                Download::Superseded => {
-                    if let Some(path) = self.follow(request, &part_path, &final_path, cancel)? {
+                Download::Done(part) => {
+                    if let Some(path) =
+                        self.verify_and_rename(request, part, &final_path, cancel)?
+                    {
                         return Ok(path);
                     }
                 }
+                Download::Superseded => {}
+            }
+            if let Some(path) = self.follow(request, &part_path, &final_path, cancel)? {
+                return Ok(path);
             }
         }
     }
@@ -290,19 +314,19 @@ impl Fetcher {
         Ok(self.dest_root.join(contained))
     }
 
-    fn download_with_retries(
+    fn download_with_retries<'a>(
         &self,
         request: RequestRef<'_>,
-        part_path: &Path,
+        part_path: &'a Path,
         cancel: &CancelToken,
         progress: &mut dyn FnMut(FetchProgress),
-    ) -> Result<Download, FetchError> {
+    ) -> Result<Download<'a>, FetchError> {
         for attempt in 0..=self.timings.backoff.len() {
             if attempt > 0 {
                 sleep_interruptible(self.timings.backoff[attempt - 1], cancel)?;
             }
             match self.attempt(request, part_path, cancel, progress) {
-                Ok(()) => return Ok(Download::Done),
+                Ok(part) => return Ok(Download::Done(part)),
                 Err(AttemptError::Superseded) => return Ok(Download::Superseded),
                 Err(AttemptError::Cancelled) => return Err(FetchError::Cancelled),
                 Err(AttemptError::Offline) => {
@@ -333,21 +357,25 @@ impl Fetcher {
         unreachable!("loop always returns before exhausting its range")
     }
 
-    fn attempt(
+    fn attempt<'a>(
         &self,
         request: RequestRef<'_>,
-        part_path: &Path,
+        part_path: &'a Path,
         cancel: &CancelToken,
         progress: &mut dyn FnMut(FetchProgress),
-    ) -> Result<(), AttemptError> {
+    ) -> Result<PartWriter<'a>, AttemptError> {
         if cancel.is_cancelled() {
             return Err(AttemptError::Cancelled);
         }
-        let existing_len = fs::metadata(part_path).map(|m| m.len()).unwrap_or(0);
+        let resumed = PartWriter::resume(part_path, cancel)?;
+        let existing_len = resumed.as_ref().map_or(0, |part| part.len);
         let (resume_offset, status, headers, body) =
             self.open_response(request, part_path, existing_len)?;
         let total = total_size(&headers, status, resume_offset, request.size_hint);
-        let mut part = PartWriter::open(part_path, resume_offset, cancel)?;
+        let mut part = match resumed {
+            Some(part) if resume_offset > 0 => part,
+            _ => PartWriter::create(part_path, cancel)?,
+        };
         let reader = body.into_reader();
         let limits = StreamLimits {
             stall_timeout: self.timings.stall_timeout,
@@ -362,7 +390,7 @@ impl Fetcher {
             cancel,
             progress,
         )?;
-        part.finish()
+        Ok(part)
     }
 
     fn open_response(
@@ -403,52 +431,41 @@ impl Fetcher {
     fn verify_and_rename(
         &self,
         request: RequestRef<'_>,
-        part_path: &Path,
+        part: PartWriter<'_>,
         final_path: &Path,
         cancel: &CancelToken,
-    ) -> Result<PathBuf, FetchError> {
-        let file = match File::open(part_path) {
-            Ok(file) => file,
-            Err(source) if source.kind() == io::ErrorKind::NotFound => {
-                return verify_completed(request, final_path);
+    ) -> Result<Option<PathBuf>, FetchError> {
+        let PartWriter {
+            file,
+            path,
+            len,
+            hasher,
+        } = part;
+        let got_hex = digest_hex(&hasher.finalize());
+        let matches = got_hex == request.sha256;
+        let outcome = with_part_lock(&file, path, Some(len), cancel, |file| {
+            if matches {
+                file.sync_all()?;
+                fs::rename(path, final_path)
+            } else {
+                fs::remove_file(path)
             }
-            Err(source) => {
-                return Err(FetchError::Io {
-                    path: part_path.to_path_buf(),
-                    source,
-                });
-            }
-        };
-        match acquire_part_lock(&file, cancel) {
-            Ok(()) => {}
-            Err(LockError::Cancelled) => return Err(FetchError::Cancelled),
-            Err(LockError::Io(source)) => {
-                return Err(FetchError::Io {
-                    path: part_path.to_path_buf(),
-                    source,
-                });
-            }
-        }
-        if !part_still_ours(part_path, &file) {
-            return verify_completed(request, final_path);
-        }
-        let got = hash_reader(&file).map_err(|source| FetchError::Io {
-            path: part_path.to_path_buf(),
-            source,
-        })?;
-        let got_hex = digest_hex(&got);
-        if got_hex != request.sha256 {
-            let _ = fs::remove_file(part_path);
-            return Err(FetchError::ChecksumMismatch {
+        });
+        match outcome {
+            Ok(()) if matches => Ok(Some(final_path.to_path_buf())),
+            Ok(()) => Err(FetchError::ChecksumMismatch {
                 expected: request.sha256.to_string(),
                 got: got_hex,
-            });
+            }),
+            Err(AttemptError::Cancelled) => Err(FetchError::Cancelled),
+            Err(AttemptError::Io(source)) if source.kind() != io::ErrorKind::NotFound => {
+                Err(FetchError::Io {
+                    path: path.to_path_buf(),
+                    source,
+                })
+            }
+            Err(_) => Ok(None),
         }
-        fs::rename(part_path, final_path).map_err(|source| FetchError::Io {
-            path: final_path.to_path_buf(),
-            source,
-        })?;
-        Ok(final_path.to_path_buf())
     }
 }
 
@@ -578,10 +595,6 @@ fn identity_of(_meta: &fs::Metadata) -> (u64, u64) {
     (0, 0)
 }
 
-fn part_still_ours(part_path: &Path, file: &File) -> bool {
-    part_len_if_ours(part_path, file).is_some()
-}
-
 fn part_len_if_ours(part_path: &Path, file: &File) -> Option<u64> {
     match (fs::metadata(part_path), file.metadata()) {
         (Ok(on_disk), Ok(ours)) if identity_of(&on_disk) == identity_of(&ours) => Some(ours.len()),
@@ -598,22 +611,28 @@ fn stream_body(
     cancel: &CancelToken,
     progress: &mut dyn FnMut(FetchProgress),
 ) -> Result<(), AttemptError> {
-    let mut buf = [0u8; CHUNK_SIZE];
+    let mut buf = vec![0u8; CHUNK_SIZE];
+    let mut filled = 0;
     let start = Instant::now();
     let mut last_data = Instant::now();
     let mut last_emit = start.checked_sub(PROGRESS_INTERVAL).unwrap_or(start);
     let mut received = resume_offset;
     loop {
         if cancel.is_cancelled() {
+            let _ = part.write(&buf[..filled], cancel);
             return Err(AttemptError::Cancelled);
         }
-        match reader.read(&mut buf) {
-            Ok(0) => return Ok(()),
+        match reader.read(&mut buf[filled..]) {
+            Ok(0) => return part.write(&buf[..filled], cancel),
             Ok(n) => {
-                part.write(&buf[..n], cancel)?;
+                filled += n;
                 received += n as u64;
                 if received >= limits.byte_cap {
-                    return Ok(());
+                    return part.write(&buf[..filled], cancel);
+                }
+                if filled == buf.len() {
+                    part.write(&buf, cancel)?;
+                    filled = 0;
                 }
                 last_data = Instant::now();
                 if last_emit.elapsed() >= PROGRESS_INTERVAL {
@@ -629,9 +648,12 @@ fn stream_body(
                 }
             }
             Err(err) => {
+                let flushed = part.write(&buf[..filled], cancel);
+                filled = 0;
                 if cancel.is_cancelled() {
                     return Err(AttemptError::Cancelled);
                 }
+                flushed?;
                 if is_recv_body_poll_timeout(&err) {
                     if last_data.elapsed() >= limits.stall_timeout {
                         return Err(AttemptError::Stalled);
@@ -652,21 +674,24 @@ fn is_recv_body_poll_timeout(err: &io::Error) -> bool {
 }
 
 fn hash_file(path: &Path) -> io::Result<[u8; 32]> {
-    let file = File::open(path)?;
-    hash_reader(&file)
+    let mut hasher = Sha256::new();
+    hash_into(File::open(path)?, &mut hasher)?;
+    Ok(hasher.finalize().into())
 }
 
-fn hash_reader(mut file: &File) -> io::Result<[u8; 32]> {
-    let mut hasher = Sha256::new();
-    let mut buf = [0u8; CHUNK_SIZE];
+fn hash_into(mut reader: impl Read, hasher: &mut Sha256) -> io::Result<u64> {
+    let mut buf = vec![0u8; CHUNK_SIZE];
+    let mut total = 0;
     loop {
-        let n = file.read(&mut buf)?;
-        if n == 0 {
-            break;
-        }
+        let n = match reader.read(&mut buf) {
+            Ok(0) => return Ok(total),
+            Ok(n) => n,
+            Err(err) if err.kind() == io::ErrorKind::Interrupted => continue,
+            Err(err) => return Err(err),
+        };
         hasher.update(&buf[..n]);
+        total += n as u64;
     }
-    Ok(hasher.finalize().into())
 }
 
 #[cfg(test)]

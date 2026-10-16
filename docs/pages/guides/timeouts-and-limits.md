@@ -61,4 +61,4 @@ The bytes up to the cap are then verified like any other download, so a capped b
 
 ## Blocking, one thread a download
 
-There is no async runtime: each call blocks its thread until it returns. Memory stays flat whatever the file's size, a 64 KiB buffer for the body and the same for hashing; see [Speed and memory](speed-and-memory.md).
+There is no async runtime: each call blocks its thread until it returns. Memory stays flat whatever the file's size, one 1 MiB buffer for the body, hashed as it is written; see [Speed and memory](speed-and-memory.md).

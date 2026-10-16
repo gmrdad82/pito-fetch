@@ -2,15 +2,15 @@ title = "PEAK MEMORY"
 unit = "MIB, LARGEST PROCESS"
 better = "lower"
 subtitle = "1 GIB DOWNLOAD AND VERIFY, LOOPBACK, LINUX"
-date = "2026-10-14"
+date = "2026-10-16"
 suffix = " MIB"
 notes = ["PEAK RESIDENT SET; FOR CURL AND WGET THE LARGER OF IT AND SHA256SUM."]
-parties = [{ name = "PITO-FETCH 1.0.0" }, { name = "CURL 8.22 + SHA256SUM" }, { name = "WGET 1.25 + SHA256SUM" }]
+parties = [{ name = "PITO-FETCH 1.0.2" }, { name = "CURL 8.22 + SHA256SUM" }, { name = "WGET 1.25 + SHA256SUM" }]
 
 [[groups]]
 name = "RANDOM FILE"
 rows = [
-  { label = "1 GIB", values = [7.8, 9.9, 8.3] },
+  { label = "1 GIB", values = [7.9, 9.9, 8.3] },
 ]
 
 [words]

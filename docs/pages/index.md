@@ -11,8 +11,8 @@ sidebar:
 
 | | |
 |---|---|
-| 1 GiB downloaded and verified | **2.47 s** on loopback, in **7.8 MiB** of memory |
-| Library code | **699 lines** of Rust |
+| 1 GiB downloaded and verified | **0.59 s** on loopback, in **7.9 MiB** of memory |
+| Library code | **725 lines** of Rust |
 | Dependencies | **3** direct (ureq, sha2, thiserror), no OpenSSL or other system library |
 | Clean release build | **11.7 s** |
 | A downloader built on it | **2.5 MB** stripped, TLS and root certificates included |
