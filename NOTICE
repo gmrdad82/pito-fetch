@@ -8,7 +8,7 @@ from, and what covers it.
 
 Terminal clips recorded by prec from this repository's own shots
 (render/terminal.toml and the tapes and scripts in render/terminal/), running
-the get and serve examples on generated data, made GIFs by pconv, under the
+the get and serve examples on generated data, made GIFs by pcod, under the
 MIT licence like the code:
 - docs/images/resume.gif: the resume shot
 - docs/images/together.gif: the together shot

@@ -118,7 +118,7 @@ The charts are drawn by [pito-compare](https://github.com/gmrdad82/pito-compare)
 
 ## Part of PITO MD
 
-pito-fetch is one of the building blocks of [PITO MD](https://pitomd.com) apps. [pito-renew](https://github.com/gmrdad82/pito-renew) updates an app with a sha256-verified download swapped in place, and [pito-embed](https://github.com/gmrdad82/pito-embed) brings on-device text embeddings; both fetch their files through pito-fetch. The clips here are recorded by [prec](https://github.com/gmrdad82/prec) and made GIFs by [pconv](https://github.com/gmrdad82/pconv), and the charts are drawn by [pito-compare](https://github.com/gmrdad82/pito-compare).
+pito-fetch is one of the building blocks of [PITO MD](https://pitomd.com) apps. [pito-renew](https://github.com/gmrdad82/pito-renew) updates an app with a sha256-verified download swapped in place, and [pito-embed](https://github.com/gmrdad82/pito-embed) brings on-device text embeddings; both fetch their files through pito-fetch. The clips here are recorded by [prec](https://github.com/gmrdad82/prec) and made GIFs by [pcod](https://github.com/gmrdad82/pito-codecs), and the charts are drawn by [pito-compare](https://github.com/gmrdad82/pito-compare).
 
 ## Contributing
 
