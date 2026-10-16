@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.0.2 — 2026-10-16
+
+### Changed
+
+- The README's Licence section shows the PITO MD wordmark.
+- The Licence wordmark comes from the brand masters' README export.
+- CI saves its caches from main only.
+- The README and NOTICE name pcod, which made pconv's GIFs.
+- Hash while streaming.
+
 ## v1.0.1 — 2026-10-14
 
 ### Added
