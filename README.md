@@ -2,7 +2,7 @@
 
 # pito-fetch
 
-[![CI](https://github.com/gmrdad82/pito-fetch/actions/workflows/ci.yml/badge.svg)](https://github.com/gmrdad82/pito-fetch/actions/workflows/ci.yml) [![Version](https://img.shields.io/github/v/tag/gmrdad82/pito-fetch)](https://github.com/gmrdad82/pito-fetch/tags)
+[![Version](https://img.shields.io/github/v/tag/gmrdad82/pito-fetch)](https://github.com/gmrdad82/pito-fetch/tags)
 
 **Downloads you can trust, in one call.** pito-fetch is a small Rust library, part of [PITO MD](https://pitomd.com): give it a URL, where the file goes and the file's sha256. It downloads into a `.part` file, picks that file up again after a crash or a dropped connection, checks the sha256 and only then renames it into place. A file is there whole and verified, or not at all.
 
@@ -131,7 +131,7 @@ cargo build --release
 bin/gate
 ```
 
-`bin/gate` runs what CI runs: ShellCheck where it is installed, rustfmt, clippy with warnings as errors, and the tests. CI runs the gate on Linux and macOS on every push and nightly, and a tag publishes its GitHub Release with the [CHANGELOG](CHANGELOG.md)'s notes and a docs bundle, `docs-vX.Y.Z.tar.gz`, that `bin/docs-bundle` builds from the guides in [`docs/pages/`](docs/pages), the API reference from `cargo doc` and the CHANGELOG. The clips are prec shots in `render/terminal.toml`, and [NOTICE](NOTICE) lists every image and where it comes from.
+`bin/gate` runs ShellCheck where it is installed, rustfmt, clippy with warnings as errors, the tests and the doctests; it passes on Linux and macOS before every merge and every tag. Each tag's GitHub Release carries the [CHANGELOG](CHANGELOG.md)'s notes and a docs bundle, `docs-vX.Y.Z.tar.gz`, that `bin/docs-bundle` builds from the guides in [`docs/pages/`](docs/pages), the API reference from `cargo doc` and the CHANGELOG. The clips are prec shots in `render/terminal.toml`, and [NOTICE](NOTICE) lists every image and where it comes from.
 
 ## Licence
 
