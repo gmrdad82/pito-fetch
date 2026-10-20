@@ -16,6 +16,8 @@
 
 How each number was measured is under [Numbers](#numbers). Works on Linux and macOS (Windows through WSL).
 
+Got questions or doubts? Ping me on Discord: https://discord.gg/XsNcn3kYzn
+
 ## Install and first use
 
 pito-fetch isn't on crates.io. Add it from this repository, pinned to a [tag](https://github.com/gmrdad82/pito-fetch/tags); the line is the same on Linux, macOS and WSL:
