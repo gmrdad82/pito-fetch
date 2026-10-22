@@ -61,6 +61,33 @@ mod tests {
         assert_eq!(streamed.finalize_hex(), sha256_hex(&data));
     }
 
+    #[test]
+    fn stream_hasher_default_matches_new() {
+        let data = payload(10_000);
+        let mut from_default = StreamHasher::default();
+        let mut from_new = StreamHasher::new();
+        from_default.update(&data);
+        from_new.update(&data);
+        assert_eq!(from_default.finalize_hex(), from_new.finalize_hex());
+    }
+
+    #[test]
+    fn sha256_hex_of_empty_input_is_the_known_digest() {
+        let empty = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+        assert_eq!(sha256_hex(b""), empty);
+        assert_eq!(StreamHasher::new().finalize_hex(), empty);
+        assert_eq!(
+            sha256_hex(b"abc"),
+            "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        );
+    }
+
+    #[test]
+    fn digest_hex_is_lowercase_and_zero_padded() {
+        assert_eq!(digest_hex(&[0x00, 0x0a, 0xff, 0xab]), "000affab");
+        assert_eq!(digest_hex(&[]), "");
+    }
+
     fn payload(len: usize) -> Vec<u8> {
         (0..len)
             .map(|i| ((i as u32).wrapping_mul(2_654_435_761) >> 16) as u8)

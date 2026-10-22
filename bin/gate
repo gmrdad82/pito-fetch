@@ -2,6 +2,16 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+fast=0
+case "$#:${1:-}" in
+  0:) ;;
+  1:--fast) fast=1 ;;
+  *)
+    echo "usage: bin/gate [--fast]" >&2
+    exit 2
+    ;;
+esac
+
 if command -v shellcheck > /dev/null; then
   shellcheck bin/gate bin/docs-bundle bin/marks render/terminal/setup.sh render/terminal/teardown.sh
 else
@@ -9,5 +19,13 @@ else
 fi
 cargo fmt --all --check
 cargo clippy --workspace --all-targets --locked -- -D warnings
-cargo test --workspace --all-targets --locked
+if cargo nextest --version > /dev/null 2>&1; then
+  cargo nextest run --workspace --all-targets --locked
+else
+  cargo test --workspace --all-targets --locked
+fi
 cargo test --workspace --doc --locked
+
+if [ "$fast" -eq 1 ]; then
+  echo "fast gate: green"
+fi
