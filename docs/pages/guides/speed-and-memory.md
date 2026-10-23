@@ -23,7 +23,7 @@ Memory stays flat whatever the file's size: bytes stream through a 1 MiB buffer 
 
 | | |
 |---|---|
-| Library code | 725 lines of Rust |
+| Library code | 739 lines of Rust |
 | Dependencies | 3 direct (ureq, sha2, thiserror), 35 crates in all |
 | Clean release build | 11.7 s |
 | The `get` example | 3.4 MB as built, 2.5 MB stripped, TLS and root certificates included |

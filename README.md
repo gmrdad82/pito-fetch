@@ -9,7 +9,7 @@
 | | |
 |---|---|
 | 1 GiB downloaded and verified | **0.59 s** on loopback, in **7.9 MiB** of memory |
-| Library code | **725 lines** of Rust |
+| Library code | **739 lines** of Rust |
 | Dependencies | **3** direct (ureq, sha2, thiserror), no OpenSSL or other system library |
 | Clean release build | **11.7 s** |
 | A downloader built on it | **2.5 MB** stripped, TLS and root certificates included |
@@ -78,7 +78,7 @@ Downloading a file and checking its sha256 takes pito-fetch less time than curl 
 
 <p align="center"><img src="docs/images/peak-memory-paired.png" width="640" alt="Chart, peak memory in MiB for a 1 GiB download and verify, lower is better: pito-fetch 7.9, curl plus sha256sum 9.9, wget plus sha256sum 8.3."></p>
 
-Memory stays flat whatever the file's size: bytes stream through a 1 MiB buffer to disk and into the sha256 in the same pass. The whole library is 725 lines of Rust on three crates: [ureq](https://github.com/algesten/ureq) for HTTP and HTTPS with rustls and the Mozilla root certificates built in, sha2 and thiserror. It is blocking, one thread per download, with no async runtime.
+Memory stays flat whatever the file's size: bytes stream through a 1 MiB buffer to disk and into the sha256 in the same pass. The whole library is 739 lines of Rust on three crates: [ureq](https://github.com/algesten/ureq) for HTTP and HTTPS with rustls and the Mozilla root certificates built in, sha2 and thiserror. It is blocking, one thread per download, with no async runtime.
 
 ### Safe against bad servers and bad paths
 

@@ -52,7 +52,7 @@ assert_eq!(path, std::path::Path::new("/var/lib/myapp/models/embed/model.bin"));
 
 `fetch_request` returns the final path once the file's sha256 has matched and it has been renamed into place. Every failure is a `FetchError`; [Handle errors](handle-errors.md) lists them.
 
-The progress callback runs on the calling thread, on the first bytes and then about every 100 ms while bytes arrive:
+The progress callback runs on the calling thread, on the first bytes, about every 100 ms while bytes arrive, and once more when the body ends, so the last `received` is the full size:
 
 - `received`: bytes in the part file so far, a resumed download's earlier bytes included.
 - `total`: the whole file's size when the server sends a length, else your `size_hint`, else `None`.
