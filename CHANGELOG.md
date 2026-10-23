@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.0.3 — 2026-10-23
+
+### Fixed
+
+- The progress callback now gets one last event when the body ends, so `received` reaches the full size even on downloads faster than 100 ms.
+- A resumed download whose server sends a huge `Content-Length` no longer overflows the reported total.
+
+### Changed
+
+- 77 tests now cover the library, up from 13: line coverage is 96% for the fetcher and 100% for the rest.
+- The README links to Discord for questions.
+
 ## v1.0.2 — 2026-10-16
 
 ### Changed
